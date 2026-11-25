@@ -18,7 +18,7 @@ jobs:
       packages: read
       actions: write
     container:
-      image: ghcr.io/fruitcusp/wf-worker:latest
+      image: ghcr.io/fruitcusp/wf-worker:voice
     env:
       DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
       VAULT_DIR: ${{ github.workspace }}/.vault
