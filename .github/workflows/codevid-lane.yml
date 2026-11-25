@@ -1,0 +1,29 @@
+name: codevid-lane
+on:
+  workflow_dispatch:
+    inputs:
+      queue_id:
+        description: "Queue ID in vault (opaque)"
+        required: true
+        type: string
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    permissions:
+      contents: read
+    env:
+      GH_TOKEN: ${{ secrets.DATA_TOKEN }}
+      DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+      VAULT_DIR: ${{ github.workspace }}/.vault
+      RUN_ID: ${{ github.run_id }}
+      QUEUE_ID: ${{ inputs.queue_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: fruitcusp/house-data
+          token: ${{ secrets.DATA_TOKEN }}
+          path: .vault
+      - name: Run lane (logic in vault)
+        timeout-minutes: 115
+        run: bash .vault/brain/pipelines/workframe-codevid-run.sh
