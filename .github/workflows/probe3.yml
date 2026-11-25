@@ -1,0 +1,22 @@
+name: probe3
+on:
+  workflow_dispatch:
+jobs:
+  probe-lite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ghcr.io/fruitcusp/tutalab-worker:lite
+    steps:
+      - name: Probe lite image for voice engine
+        run: |
+          echo "=== LITE PROBE ==="
+          for t in python3 ffmpeg ffprobe git curl; do command -v $t >/dev/null 2>&1 && echo "TOOL $t YES" || echo "TOOL $t NO"; done
+          ls /tmp/rustdist/ 2>/dev/null && echo "RUSTDIST YES" || echo "RUSTDIST NO"
+          test -f /tmp/rustdist/vieneu-rs && echo "VIENEU_RS YES" || echo "VIENEU_RS NO"
+          python3 -c "import vieneu" 2>/dev/null && echo "VIENEU_PY YES" || echo "VIENEU_PY NO"
+          du -sh /tmp/rustdist 2>/dev/null || true
+          echo "=== END ==="
