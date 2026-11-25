@@ -1,0 +1,25 @@
+name: mirror-image
+on:
+  workflow_dispatch:
+jobs:
+  mirror:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Mirror worker image to neutral name (old image kept as fallback)
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "$GH_TOKEN" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+          for tag in latest lite; do
+            docker pull ghcr.io/fruitcusp/tutalab-worker:$tag
+            docker tag ghcr.io/fruitcusp/tutalab-worker:$tag ghcr.io/fruitcusp/wf-worker:$tag
+            docker push ghcr.io/fruitcusp/wf-worker:$tag
+            echo "MIRRORED tag=$tag"
+            docker image inspect ghcr.io/fruitcusp/tutalab-worker:$tag --format 'old_id={{.Id}}'
+            docker image inspect ghcr.io/fruitcusp/wf-worker:$tag --format 'new_id={{.Id}}'
+          done
+          echo "MIRROR_DONE"
