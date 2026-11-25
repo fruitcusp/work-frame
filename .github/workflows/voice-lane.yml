@@ -16,6 +16,7 @@ jobs:
     permissions:
       contents: read
       packages: read
+      actions: write
     container:
       image: ghcr.io/fruitcusp/wf-worker:latest
     env:
@@ -23,6 +24,7 @@ jobs:
       VAULT_DIR: ${{ github.workspace }}/.vault
       RUN_ID: ${{ github.run_id }}
       QUEUE_ID: ${{ inputs.queue_id }}
+      FANOUT_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
         with:
