@@ -1,0 +1,35 @@
+name: repoboard-lane
+on:
+  workflow_dispatch:
+    inputs:
+      queue_id:
+        description: "Queue job id (opaque)"
+        required: true
+        type: string
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 170
+    permissions:
+      contents: read
+    env:
+      DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+      QUEUE_ID: ${{ inputs.queue_id }}
+      RUN_ID: ${{ github.run_id }}
+    steps:
+      - name: Get the real instructions
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${DATA_TOKEN:-}" ]; then echo "ERR: DATA_TOKEN missing"; exit 1; fi
+          git clone --depth 1 "https://x-access-token:${DATA_TOKEN}@github.com/fruitcusp/house-data.git" .vault
+          export VAULT_DIR="$PWD/.vault"
+          echo "VAULT_DIR=$VAULT_DIR" >> "$GITHUB_ENV"
+          ls "$VAULT_DIR/brain/pipelines/workframe-repoboard-run.sh" >/dev/null
+          echo "READY"
+      - name: Run
+        shell: bash
+        run: |
+          set -euo pipefail
+          export GH_TOKEN="${DATA_TOKEN}"
+          bash "$VAULT_DIR/brain/pipelines/workframe-repoboard-run.sh"
