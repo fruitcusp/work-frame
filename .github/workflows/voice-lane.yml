@@ -17,7 +17,7 @@ jobs:
       contents: read
       packages: read
     container:
-      image: ghcr.io/fruitcusp/tutalab-worker:latest
+      image: ghcr.io/fruitcusp/wf-worker:latest
     env:
       DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
       VAULT_DIR: ${{ github.workspace }}/.vault
