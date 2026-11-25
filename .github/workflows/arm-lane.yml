@@ -1,0 +1,24 @@
+name: arm-lane
+on:
+  workflow_dispatch:
+# Thin shell only (house standard 25/11): real logic lives in the vault
+# script brain/pipelines/arm-machine-run.sh. No concurrency group: each
+# run is its own machine and writes to its own vault path.
+jobs:
+  run:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 355
+    permissions:
+      contents: read
+    env:
+      DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+      RUN_ID: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: fruitcusp/house-data
+          token: ${{ secrets.DATA_TOKEN }}
+          path: .vault
+      - name: Run machine (logic in vault)
+        timeout-minutes: 350
+        run: bash .vault/brain/pipelines/arm-machine-run.sh
