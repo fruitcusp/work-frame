@@ -1,0 +1,34 @@
+name: story-lane
+on:
+  workflow_dispatch:
+    inputs:
+      queue_id:
+        description: "Queue ID in vault (opaque)"
+        required: true
+        type: string
+# NO shared concurrency group (house rule 25/11): each run works on its own
+# queue_id and writes to its own path in the vault, so runs never cancel
+# or block each other.
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+      packages: read
+    container:
+      image: ghcr.io/fruitcusp/tutalab-worker:latest
+    env:
+      DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+      VAULT_DIR: ${{ github.workspace }}/.vault
+      RUN_ID: ${{ github.run_id }}
+      QUEUE_ID: ${{ inputs.queue_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: fruitcusp/house-data
+          token: ${{ secrets.DATA_TOKEN }}
+          path: .vault
+      - name: Run lane (logic in vault)
+        timeout-minutes: 40
+        run: bash .vault/brain/pipelines/workframe-story-run.sh
