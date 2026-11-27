@@ -11,6 +11,7 @@ jobs:
       contents: read
     env:
       DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+      AG_KEY: ${{ secrets.AG_KEY }}
       RUN_ID: ${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
