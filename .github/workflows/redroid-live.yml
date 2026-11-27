@@ -1,0 +1,29 @@
+name: redroid-live
+on:
+  workflow_dispatch:
+    inputs:
+      hold_minutes:
+        description: "Minutes to keep the phone alive (max 330)"
+        required: false
+        default: "320"
+# Thin shell only (house standard 25/11): real logic lives in the vault
+# script brain/pipelines/redroid-live.sh.
+jobs:
+  run:
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 355
+    permissions:
+      contents: read
+    env:
+      DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+      RUN_ID: ${{ github.run_id }}
+      HOLD_MIN: ${{ inputs.hold_minutes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: fruitcusp/house-data
+          token: ${{ secrets.DATA_TOKEN }}
+          path: .vault
+      - name: Run redroid live (logic in vault)
+        timeout-minutes: 350
+        run: bash .vault/brain/pipelines/redroid-live.sh
