@@ -1,0 +1,32 @@
+name: droid-lane
+on:
+  workflow_dispatch:
+    inputs:
+      hold_minutes:
+        description: "Keep live minutes after test (0 = test only)"
+        required: false
+        default: "0"
+        type: string
+# NO shared concurrency group (house rule 25/11): each run is its own machine
+# and writes to its own path in the vault, so runs never cancel each other.
+# Thin shell only: all logic lives in the private vault (house standard 25/11).
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    permissions:
+      contents: read
+    env:
+      DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
+      VAULT_DIR: ${{ github.workspace }}/.vault
+      RUN_ID: ${{ github.run_id }}
+      HOLD_MINUTES: ${{ inputs.hold_minutes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: fruitcusp/house-data
+          token: ${{ secrets.DATA_TOKEN }}
+          path: .vault
+      - name: Run lane (logic in vault)
+        timeout-minutes: 350
+        run: bash .vault/brain/pipelines/droid-run.sh
