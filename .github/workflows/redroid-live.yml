@@ -8,6 +8,10 @@ on:
         default: "320"
 # Thin shell only (house standard 25/11): real logic lives in the vault
 # script brain/pipelines/redroid-live.sh.
+concurrency:
+  group: redroid-live
+  cancel-in-progress: false
+
 jobs:
   run:
     runs-on: ubuntu-24.04-arm
