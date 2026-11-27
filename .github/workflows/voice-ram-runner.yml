@@ -1,0 +1,109 @@
+name: Voice RAM Runner (Auto)
+on:
+  workflow_dispatch:
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - name: Setup RustDist in RAM
+        env:
+          GH_TOKEN: ${{ secrets.DATA_TOKEN }}
+        run: |
+          mkdir -p /dev/shm/rd_dl
+          gh release download vieneu-rust-dist-20261115 -R fruitcusp/house-data -D /dev/shm/rd_dl --clobber
+          tar -xzf /dev/shm/rd_dl/vieneu-rust-dist.tar.gz -C /dev/shm/rd_dl
+          mv /dev/shm/rd_dl/rustdist /dev/shm/rustdist
+          rm -rf /dev/shm/rd_dl
+          mv /dev/shm/rustdist/syslibs/libc.so.6 /dev/shm/rustdist/syslibs/libc.so.6.bak || true
+
+      - name: Setup Tailscale Funnel
+        env:
+          TS_API_KEY: ${{ secrets.TS_API_KEY }}
+        run: |
+          curl -fsSL https://tailscale.com/install.sh | sh
+          AUTHKEY=$(python3 -c '
+import json, urllib.request, base64, os
+k = os.environ["TS_API_KEY"]
+req = urllib.request.Request("https://api.tailscale.com/api/v2/tailnet/-/keys",
+    data=json.dumps({"capabilities":{"devices":{"create":{"reusable":True,"ephemeral":True,"preauthorized":True}}}}).encode(), method="POST")
+req.add_header("Authorization", "Basic " + base64.b64encode((k+":").encode()).decode())
+req.add_header("Content-Type", "application/json")
+print(json.loads(urllib.request.urlopen(req).read())["key"])
+')
+          sudo tailscale up --reset --auth-key="$AUTHKEY" --hostname=ag6h-vieneu
+          sudo tailscale funnel --bg 8787
+
+      - name: Run Voice RAM Server
+        run: |
+          cat << 'PYEOF' > /tmp/srv.py
+import http.server, json, subprocess, tempfile, os, socketserver, base64, wave, urllib.request, urllib.parse, struct, re
+DIST = "/dev/shm/rustdist"
+BIN = f"{DIST}/vieneu-rs"
+ENV = os.environ.copy()
+ENV["LD_LIBRARY_PATH"] = f"{DIST}/syslibs:" + ENV.get("LD_LIBRARY_PATH", "")
+STYLE_MAP = {"news": "Hải Đăng", "story": "Minh Triết"}
+def split_text(t, m=140):
+    parts = [p.strip() for p in re.split(r'(?<=[.!?\n])\s+', t.strip()) if p.strip()]
+    out = []
+    for p in parts:
+        while len(p) > m:
+            c = p.rfind(' ', 0, m)
+            if c <= 0: c = m
+            out.append(p[:c].strip()); p = p[c:].strip()
+        if p: out.append(p)
+    return out or [t[:m]]
+def synth(v, t, o):
+    return subprocess.run([BIN, "say", "--voice", v, "--text", t, "--out", o], env=ENV, cwd=DIST, capture_output=True, text=True, timeout=45)
+def chg_spd(iw, ow, s):
+    if abs(s - 1.0) < 0.01:
+        open(ow, "wb").write(open(iw, "rb").read()); return
+    with wave.open(iw, "rb") as w: p, fr = w.getparams(), w.readframes(w.getnframes())
+    smp = struct.unpack("<" + "h"*(len(fr)//2), fr)
+    out = [smp[min(int(i*s), len(smp)-1)] for i in range(int(len(smp)/s))]
+    with wave.open(ow, "wb") as wo: wo.setparams(p); wo.writeframes(struct.pack("<" + "h"*len(out), *out))
+def cat_wav(ws, ow, sil=0.25):
+    with wave.open(ws[0], "rb") as w0: p = w0.getparams()
+    sf = b"\x00" * int(p.framerate * sil) * p.nchannels * p.sampwidth
+    with wave.open(ow, "wb") as o:
+        o.setparams(p)
+        for i, wf in enumerate(ws):
+            with wave.open(wf, "rb") as w: o.writeframes(w.readframes(w.getnframes()))
+            if i < len(ws)-1 and sil > 0: o.writeframes(sf)
+class H(http.server.BaseHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header("Access-Control-Allow-Origin", "*")
+        self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+        self.send_header("Access-Control-Allow-Headers", "Content-Type")
+        super().end_headers()
+    def do_OPTIONS(self): self.send_response(204); self.end_headers()
+    def do_GET(self): self.send_response(200); self.end_headers(); self.wfile.write(b"OK")
+    def do_POST(self):
+        b = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+        mode, voice, style = b.get("mode") or "single", b.get("voice") or "Thiện Minh", b.get("style") or "natural"
+        spd = max(0.5, min(2.0, float(b.get("speed") or 1.0)))
+        text, lines = (b.get("text") or "").strip(), b.get("lines") or []
+        if voice == "Thiện Minh" and style in STYLE_MAP: voice = STYLE_MAP[style]
+        with tempfile.TemporaryDirectory() as td:
+            rw, ow = os.path.join(td, "r.wav"), os.path.join(td, "o.wav")
+            ps = []
+            if mode == "dialogue" and lines:
+                for i, it in enumerate(lines):
+                    for j, ch in enumerate(split_text(it.get("text","").strip())):
+                        pw = os.path.join(td, f"d_{i}_{j}.wav")
+                        if synth(it.get("voice") or voice, ch, pw).returncode == 0: ps.append(pw)
+                cat_wav(ps, rw, 0.35)
+            else:
+                for j, ch in enumerate(split_text(text)):
+                    pw = os.path.join(td, f"s_{j}.wav")
+                    if synth(voice, ch, pw).returncode == 0: ps.append(pw)
+                cat_wav(ps, rw, 0.15)
+            chg_spd(rw, ow, spd)
+            d = open(ow, "rb").read()
+            self.send_response(200); self.send_header("Content-Type", "audio/wav"); self.send_header("Content-Length", str(len(d))); self.end_headers(); self.wfile.write(d)
+    def log_message(self, *a): pass
+socketserver.ThreadingTCPServer.allow_reuse_address = True
+socketserver.ThreadingTCPServer(("127.0.0.1", 8787), H).serve_forever()
+PYEOF
+          python3 /tmp/srv.py
