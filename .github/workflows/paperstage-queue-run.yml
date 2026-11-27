@@ -1,0 +1,25 @@
+name: paperstage-queue-run
+on:
+  workflow_dispatch:
+    inputs:
+      queue_id:
+        required: true
+        type: string
+# Thin shell: cold fallback lane for one paperstage job (logic in vault).
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+    env:
+      DATA_TOKEN: <redacted>
+      QUEUE_ID: ${{ inputs.queue_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: fruitcusp/house-data
+          token: <redacted>
+          path: .vault
+      - name: Run one cold job (logic in vault)
+        run: bash .vault/brain/pipelines/paperstage-queue-run.sh
