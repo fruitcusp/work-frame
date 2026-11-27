@@ -1,0 +1,26 @@
+name: paperstage-ram-keeper
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+# Thin shell: if no paperstage RAM machine is running or queued, open a new one.
+jobs:
+  keep:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: write
+    steps:
+      - name: Ensure one machine
+        env:
+          GH_TOKEN: <redacted>
+        run: |
+          ACTIVE=$(gh run list -R fruitcusp/work-frame --workflow paperstage-ram-machine.yml --status in_progress --limit 1 --json databaseId --jq 'length')
+          QUEUED=$(gh run list -R fruitcusp/work-frame --workflow paperstage-ram-machine.yml --status queued --limit 1 --json databaseId --jq 'length')
+          echo "keeper: in_progress=$ACTIVE queued=$QUEUED"
+          if [ "$ACTIVE" = "0" ] && [ "$QUEUED" = "0" ]; then
+            gh workflow run paperstage-ram-machine.yml -R fruitcusp/work-frame
+            echo "keeper: opened new paperstage RAM machine"
+          else
+            echo "keeper: machine already up"
+          fi
