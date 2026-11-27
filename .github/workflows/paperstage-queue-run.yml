@@ -13,13 +13,13 @@ jobs:
     permissions:
       contents: read
     env:
-      DATA_TOKEN: <redacted>
+      DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
       QUEUE_ID: ${{ inputs.queue_id }}
     steps:
       - uses: actions/checkout@v4
         with:
           repository: fruitcusp/house-data
-          token: <redacted>
+          token: ${{ secrets.DATA_TOKEN }}
           path: .vault
       - name: Run one cold job (logic in vault)
         run: bash .vault/brain/pipelines/paperstage-queue-run.sh
