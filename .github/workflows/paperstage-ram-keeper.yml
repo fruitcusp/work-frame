@@ -13,7 +13,7 @@ jobs:
     steps:
       - name: Ensure one machine
         env:
-          GH_TOKEN: <redacted>
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           ACTIVE=$(gh run list -R fruitcusp/work-frame --workflow paperstage-ram-machine.yml --status in_progress --limit 1 --json databaseId --jq 'length')
           QUEUED=$(gh run list -R fruitcusp/work-frame --workflow paperstage-ram-machine.yml --status queued --limit 1 --json databaseId --jq 'length')
