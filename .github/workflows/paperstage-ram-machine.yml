@@ -10,13 +10,13 @@ jobs:
     permissions:
       contents: read
     env:
-      DATA_TOKEN: <redacted>
+      DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
       RUN_ID: ${{ github.run_id }}
     steps:
       - uses: actions/checkout@v4
         with:
           repository: fruitcusp/house-data
-          token: <redacted>
+          token: ${{ secrets.DATA_TOKEN }}
           path: .vault
       - name: Run machine (logic in vault)
         timeout-minutes: 350
