@@ -1,0 +1,23 @@
+name: paperstage-ram-machine
+on:
+  workflow_dispatch:
+# Thin shell only (house standard): real logic lives in the vault script
+# brain/pipelines/paperstage-ram-machine.sh. No concurrency group.
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 355
+    permissions:
+      contents: read
+    env:
+      DATA_TOKEN: <redacted>
+      RUN_ID: ${{ github.run_id }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          repository: fruitcusp/house-data
+          token: <redacted>
+          path: .vault
+      - name: Run machine (logic in vault)
+        timeout-minutes: 350
+        run: bash .vault/brain/pipelines/paperstage-ram-machine.sh
