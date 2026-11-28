@@ -15,10 +15,10 @@ jobs:
     timeout-minutes: 30
     permissions:
       contents: read
-      packages: read
       actions: write
-    container:
-      image: ghcr.io/fruitcusp/wf-worker:voice
+    # Pha 2 (28/11/2026): NO container — runner khong con engine rieng, chi can
+    # python3 + curl + ffmpeg co san tren ubuntu-latest; no nop viec qua API
+    # TuTaLab (be am) va chep ket qua ve ket. Image wf-worker:voice da loai bo.
     env:
       DATA_TOKEN: ${{ secrets.DATA_TOKEN }}
       VAULT_DIR: ${{ github.workspace }}/.vault
