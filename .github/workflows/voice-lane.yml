@@ -31,6 +31,8 @@ jobs:
           repository: fruitcusp/house-data
           token: ${{ secrets.DATA_TOKEN }}
           path: .vault
+      - name: Setup ffmpeg (container cu cung cap san, runner tran khong co)
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq --no-install-recommends ffmpeg
       - name: Run lane (logic in vault)
         timeout-minutes: 25
         run: bash .vault/brain/pipelines/workframe-voice-run.sh
